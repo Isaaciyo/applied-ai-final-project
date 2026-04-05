@@ -4,6 +4,10 @@
 
 **a. Initial design**
 
+- add a pet
+- schedule a walk
+- see today's tasks
+
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
 
