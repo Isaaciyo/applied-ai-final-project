@@ -34,6 +34,37 @@ Beyond the basic greedy planner, `pawpal_system.py` includes four additional fea
 
 **Conflict detection** — `Scheduler.detect_conflicts()` scans all tasks in one O(n) pass using a `defaultdict`, grouping them by start time. Any slot shared by two or more tasks produces a plain-English warning string. The method never raises — it returns a list the caller can print, log, or ignore.
 
+## Testing PawPal+
+
+### Run the test suite
+
+```bash
+source .venv/bin/activate   # if not already active
+python -m pytest tests/test_pawpal.py -v
+```
+
+### What the tests cover
+
+| Test | Area |
+|---|---|
+| `test_mark_complete_changes_status` | `Task.mark_complete()` flips `completed` to `True` |
+| `test_add_task_increases_pet_task_count` | `Pet.add_task()` correctly grows the task list |
+| `test_sort_by_time_returns_chronological_order` | `Scheduler.sort_by_time()` orders tasks `07:00 → 12:00 → 18:00` |
+| `test_marking_daily_task_complete_adds_next_day_occurrence` | Completing a `daily` task spawns a new task due `today + 1 day` |
+| `test_marking_as_needed_task_complete_adds_no_recurrence` | Completing an `as_needed` task adds nothing to the pet |
+| `test_detect_conflicts_flags_duplicate_time_slots` | Two tasks at `08:00` produce exactly one conflict warning |
+| `test_detect_conflicts_no_warning_for_distinct_times` | Tasks at different times produce an empty conflict list |
+
+All 7 tests pass on Python 3.14 / pytest 9.0.
+
+### Confidence Level
+
+**4 / 5 stars**
+
+The core scheduling behaviors — greedy generation, priority ordering, recurrence, and conflict detection — are each exercised by at least one test, and the suite covers both happy paths and critical edge cases (as_needed recurrence, no-conflict baseline). One star is withheld because the `generate()` time-budget boundary (task fits exactly) and the multi-pet conflict scenario are not yet tested, leaving a small gap in coverage.
+
+---
+
 ## Getting started
 
 ### Setup
