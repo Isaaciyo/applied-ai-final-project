@@ -1,4 +1,5 @@
-from datetime import date as today_date
+from collections import defaultdict
+from datetime import date as today_date, timedelta
 
 
 class Task:
@@ -13,8 +14,9 @@ class Task:
         category: str = "general",
         frequency: str = "daily",
         is_required: bool = False,
+        time: str = "00:00",
     ):
-        """Create a new care task with a title, duration, priority, category, and frequency."""
+        """Create a new care task with a title, duration, priority, category, frequency, and scheduled time (HH:MM)."""
         self.title = title
         self.duration_minutes = duration_minutes
         self.priority = priority
@@ -22,6 +24,29 @@ class Task:
         self.frequency = frequency
         self.is_required = is_required
         self.completed = False
+        self.time = time
+        self.due_date: today_date = today_date.today()
+
+    def next_occurrence(self) -> "Task | None":
+        """Return a new Task due tomorrow (daily) or in 7 days (weekly), or None if as_needed."""
+        if self.frequency == "daily":
+            delta = timedelta(days=1)
+        elif self.frequency == "weekly":
+            delta = timedelta(weeks=1)
+        else:
+            return None  # as_needed tasks do not recur automatically
+
+        next_task = Task(
+            title=self.title,
+            duration_minutes=self.duration_minutes,
+            priority=self.priority,
+            category=self.category,
+            frequency=self.frequency,
+            is_required=self.is_required,
+            time=self.time,
+        )
+        next_task.due_date = self.due_date + delta
+        return next_task
 
     def is_feasible(self, available_minutes: int) -> bool:
         """Return True if this task fits within the remaining time budget."""
@@ -143,6 +168,23 @@ class Scheduler:
         """Create a scheduler for the given owner and all their pets."""
         self.owner = owner
 
+    def sort_by_time(self, tasks: list[tuple[Pet, Task]]) -> list[tuple[Pet, Task]]:
+        """Return the given (pet, task) pairs sorted chronologically by task.time (HH:MM)."""
+        return sorted(tasks, key=lambda pt: pt[1].time)
+
+    def filter_tasks(
+        self,
+        completed: bool | None = None,
+        pet_name: str | None = None,
+    ) -> list[tuple[Pet, Task]]:
+        """Return (pet, task) pairs optionally filtered by completion status and/or pet name."""
+        return [
+            (pet, task)
+            for pet, task in self.owner.get_all_tasks()
+            if (completed is None or task.completed == completed)
+            and (pet_name is None or pet.name == pet_name)
+        ]
+
     def get_tasks_by_priority(self, priority: str) -> list[tuple[Pet, Task]]:
         """Return all pending (pet, task) pairs that match a given priority."""
         return [
@@ -158,18 +200,36 @@ class Scheduler:
             key=lambda pt: (not pt[1].is_required, self.PRIORITY_RANK.get(pt[1].priority, 99)),
         )
 
-    def mark_task_complete(self, title: str):
-        """Mark the first pending task with the given title as complete."""
-        for _, task in self.owner.get_all_pending_tasks():
+    def mark_task_complete(self, title: str) -> "Task | None":
+        """Mark the first pending task matching title complete and schedule its next occurrence if recurring."""
+        for pet, task in self.owner.get_all_pending_tasks():
             if task.title == title:
                 task.mark_complete()
-                return
+                next_task = task.next_occurrence()
+                if next_task is not None:
+                    pet.add_task(next_task)
+                return next_task
+        return None
+
+    def detect_conflicts(self) -> list[str]:
+        """Return a list of warning strings for any time slots shared by two or more tasks."""
+        slots: dict[str, list[tuple[str, str]]] = defaultdict(list)
+
+        for pet, task in self.owner.get_all_tasks():
+            slots[task.time].append((pet.name, task.title))
+
+        warnings = []
+        for time_slot, entries in sorted(slots.items()):
+            if len(entries) > 1:
+                details = ", ".join(f"[{pet}] {title}" for pet, title in entries)
+                warnings.append(
+                    f"WARNING: Scheduling conflict at {time_slot} — {details}"
+                )
+
+        return warnings
 
     def generate(self) -> Schedule:
-        """
-        Build a Schedule by greedily fitting pending tasks into the owner's
-        time budget. Required tasks are prioritized first, then high → medium → low.
-        """
+        """Greedily fit pending tasks into the owner's time budget, required and high-priority first."""
         schedule = Schedule(owner_name=self.owner.name)
         remaining = self.owner.available_minutes
 

@@ -36,8 +36,13 @@ Yes, three changes were made after reviewing the initial skeleton:
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+**Tradeoff: Exact time-match conflict detection instead of overlap-based detection**
+
+The `detect_conflicts()` method flags a conflict only when two tasks share the exact same `"HH:MM"` start time. It does not check whether a task's *duration* causes it to run into the start of the next task. For example, a 30-minute walk starting at `07:00` and a feeding starting at `07:15` would not be flagged, even though they physically overlap between 07:15 and 07:30.
+
+A true overlap check would require comparing each task's start time against every other task's start-plus-duration window — an O(n²) comparison across all task pairs.
+
+This tradeoff is reasonable for a pet care scheduling app at this stage for two reasons. First, pet care tasks are rarely run with surgical precision; a 5–10 minute buffer between tasks is normal, and owners understand that times are approximate anchors rather than hard start signals. Second, the exact-match check is O(n) and implemented in under 10 lines using a `defaultdict`, making it easy to understand, test, and extend. If duration-based overlap detection becomes necessary in a future iteration, the `slots` dictionary already groups tasks by time slot and could be extended to store `(start, start + duration)` intervals without restructuring the method.
 
 ---
 

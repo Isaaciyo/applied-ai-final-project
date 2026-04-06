@@ -22,6 +22,18 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## Smarter Scheduling
+
+Beyond the basic greedy planner, `pawpal_system.py` includes four additional features:
+
+**Chronological sorting** — `Scheduler.sort_by_time()` orders any list of `(pet, task)` pairs by their `"HH:MM"` time field, making it easy to display the day's plan in the order a pet owner would actually do things.
+
+**Flexible filtering** — `Scheduler.filter_tasks()` accepts optional `completed` and `pet_name` arguments and returns only the matching tasks in a single pass. Useful for views like "show me what's left for Luna today."
+
+**Automatic recurrence** — Every `Task` stores a `due_date` and a `frequency` (`daily`, `weekly`, or `as_needed`). When `Scheduler.mark_task_complete()` is called, it automatically creates the next occurrence of the task — due tomorrow for daily tasks, due in 7 days for weekly ones — and adds it back to the same pet. `as_needed` tasks complete without spawning a copy.
+
+**Conflict detection** — `Scheduler.detect_conflicts()` scans all tasks in one O(n) pass using a `defaultdict`, grouping them by start time. Any slot shared by two or more tasks produces a plain-English warning string. The method never raises — it returns a list the caller can print, log, or ignore.
+
 ## Getting started
 
 ### Setup
