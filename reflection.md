@@ -51,12 +51,19 @@ This tradeoff is reasonable for a pet care scheduling app at this stage for two 
 **a. How you used AI**
 
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
+
+I used it mainly in the design, logic, and debugginh process.
+
 - What kinds of prompts or questions were most helpful?
+    The test case conversations were most helpful since I was able to identify issues in the code.
 
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
+    Basically everything was acceptable throughout.
+
 - How did you evaluate or verify what the AI suggested?
+    By running my app and testing to predict what my expected output/logic ashould be before accepting AI suggestions.
 
 ---
 
@@ -65,12 +72,20 @@ This tradeoff is reasonable for a pet care scheduling app at this stage for two 
 **a. What you tested**
 
 - What behaviors did you test?
+    - Sorting Correctness
+    - Recurrence Logic
+    - Conflict Detection
+
 - Why were these tests important?
+    - To make sure the logic makes workflow and user interaction as smooth and understandable as possible.
 
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
+    Very confident
+
 - What edge cases would you test next if you had more time?
+    Unrealistic timeflows in the schedule
 
 ---
 
@@ -79,11 +94,16 @@ This tradeoff is reasonable for a pet care scheduling app at this stage for two 
 **a. What went well**
 
 - What part of this project are you most satisfied with?
+ I liked how we were able to arrive at different classes needed with some brainstorming
 
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
 
+I would improve the UI and the some of the task arrangement logic.
+
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+
+AI is a really good help, but I should always remeber to fact-check its suggestions.

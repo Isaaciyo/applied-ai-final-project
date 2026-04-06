@@ -67,13 +67,15 @@ else:
     selected_pet_name = st.selectbox("Assign task to", pet_names)
     selected_pet = next(p for p in st.session_state.owner.pets if p.name == selected_pet_name)
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         task_title = st.text_input("Task title", value="Morning walk")
     with col2:
         duration = st.number_input("Duration (min)", min_value=1, max_value=240, value=20)
     with col3:
         priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
+    with col4:
+        task_time = st.text_input("Time (HH:MM)", value="08:00")
 
     is_required = st.checkbox("Required task?")
 
@@ -84,22 +86,28 @@ else:
             priority=priority,
             category="general",
             is_required=is_required,
+            time=task_time,
         )
         selected_pet.add_task(task)                  # <-- Pet.add_task()
         st.success(f"Added '{task_title}' to {selected_pet.name}.")
 
-    # Show tasks for the selected pet
+    # Show tasks for the selected pet, sorted chronologically via Scheduler.sort_by_time()
     if selected_pet.tasks:
-        st.markdown(f"**{selected_pet.name}'s tasks:**")
+        scheduler = Scheduler(st.session_state.owner)
+        sorted_pairs = scheduler.sort_by_time(
+            [(selected_pet, t) for t in selected_pet.tasks]
+        )
+        st.markdown(f"**{selected_pet.name}'s tasks (sorted by time):**")
         st.table([
             {
+                "Time": t.time,
                 "Task": t.title,
                 "Duration (min)": t.duration_minutes,
                 "Priority": t.priority,
-                "Required": t.is_required,
-                "Done": t.completed,
+                "Required": "Yes" if t.is_required else "No",
+                "Done": "✓" if t.completed else "—",
             }
-            for t in selected_pet.tasks
+            for _, t in sorted_pairs
         ])
 
 st.divider()
@@ -112,7 +120,42 @@ if st.button("Generate schedule"):
     elif not st.session_state.owner.pets or not any(p.tasks for p in st.session_state.owner.pets):
         st.warning("Add at least one task before generating a schedule.")
     else:
-        scheduler = Scheduler(st.session_state.owner)   # <-- Scheduler.generate()
+        scheduler = Scheduler(st.session_state.owner)
+
+        # ── Conflict warnings ─────────────────────────────────────────────
+        # Surface conflicts BEFORE the schedule table so the owner can fix
+        # them without scrolling — each warning names the exact tasks and
+        # pets involved so the fix is obvious (change one task's time).
+        conflicts = scheduler.detect_conflicts()
+        if conflicts:
+            st.markdown("#### Scheduling Conflicts Detected")
+            for warning in conflicts:
+                st.warning(f"**Time conflict** — {warning.replace('WARNING: Scheduling conflict at ', '').replace(' — ', ': ')}\n\nTwo or more tasks are scheduled at the same time. Edit a task's time above to resolve this.")
+        else:
+            st.success("No scheduling conflicts found.")
+
+        # ── Generate and display the schedule ────────────────────────────
         schedule = scheduler.generate()
-        st.success("Schedule generated!")
-        st.text(schedule.to_display())
+
+        if not schedule.entries:
+            st.warning("No tasks could fit within your available time budget.")
+        else:
+            st.markdown(f"#### Plan for {st.session_state.owner.name} — {schedule.date}")
+
+            # Sort the scheduled entries chronologically before display
+            sorted_entries = scheduler.sort_by_time(schedule.entries)
+            st.table([
+                {
+                    "Time": task.time,
+                    "Pet": pet.name,
+                    "Task": task.title,
+                    "Duration (min)": task.duration_minutes,
+                    "Priority": task.priority,
+                    "Required": "Yes" if task.is_required else "No",
+                }
+                for pet, task in sorted_entries
+            ])
+
+            total = schedule.total_time()
+            budget = st.session_state.owner.available_minutes
+            st.info(f"**Total:** {total} min used of {budget} min available ({budget - total} min remaining)\n\n{schedule.explanation}")

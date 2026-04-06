@@ -1,6 +1,34 @@
-# PawPal+ (Module 2 Project)
+# PawPal+
 
-You are building **PawPal+**, a Streamlit app that helps a pet owner plan care tasks for their pet.
+**PawPal+** is a Streamlit app that helps busy pet owners stay consistent with daily pet care. Enter your pets, assign tasks with times and priorities, and let the scheduler build an optimized daily plan — complete with conflict warnings and automatic recurrence.
+
+---
+
+## Features
+
+### Priority-based scheduling
+The scheduler always places **required tasks first**, then fills remaining time in high → medium → low order. If a task cannot fit within the owner's available time budget, it is skipped rather than truncated. This guarantees the most important care always gets done.
+
+### Chronological sorting
+Every task carries an `HH:MM` time field. `Scheduler.sort_by_time()` reorders any task list chronologically so the generated plan reflects the actual sequence of a pet owner's day — not just priority rank.
+
+### Conflict detection
+Before the schedule is built, `Scheduler.detect_conflicts()` scans all tasks in a single O(n) pass using a `defaultdict`. Any two tasks sharing the same start time produce a plain-English warning identifying the exact pets and tasks involved. Conflicts are surfaced in the UI before the schedule table so they can be fixed without scrolling.
+
+### Automatic daily recurrence
+Every `Task` stores a `frequency` (`daily`, `weekly`, or `as_needed`) and a `due_date`. When `Scheduler.mark_task_complete()` is called, it automatically creates the next occurrence of the task and adds it back to the same pet — due tomorrow for daily tasks, due in 7 days for weekly ones. `as_needed` tasks complete without spawning a copy.
+
+### Flexible task filtering
+`Scheduler.filter_tasks()` accepts optional `completed` and `pet_name` arguments and returns matching `(pet, task)` pairs in a single pass. This powers views like "show only what's still pending for Luna today."
+
+### Multi-pet support
+A single `Owner` can hold any number of `Pet` objects. The scheduler aggregates tasks across all pets, so one schedule covers the full household. The UI task table identifies which pet each entry belongs to.
+
+### Explained plans
+Every generated `Schedule` includes a natural-language `explanation` field that summarizes how many tasks were scheduled, which pets are covered, how much time was used, and what ordering logic was applied.
+
+<a href="/course_images/ai110/your_screenshot_name.png" target="_blank"><img src='app_screenshot.png' title='PawPal App' width='' alt='PawPal App' class='center-block' /></a>.
+---
 
 ## Scenario
 
