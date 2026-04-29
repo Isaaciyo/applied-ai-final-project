@@ -1,5 +1,10 @@
+import os
 import streamlit as st
+from dotenv import load_dotenv
 from pawpal_system import Owner, Pet, Task, Scheduler
+from agent import run_scheduling_agent
+
+load_dotenv()
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 st.title("🐾 PawPal+")
@@ -114,48 +119,101 @@ st.divider()
 
 # ── Section 4: Generate Schedule ─────────────────────────────────────────────
 st.subheader("4. Today's Schedule")
-if st.button("Generate schedule"):
-    if st.session_state.owner is None:
-        st.warning("Save an owner first.")
-    elif not st.session_state.owner.pets or not any(p.tasks for p in st.session_state.owner.pets):
-        st.warning("Add at least one task before generating a schedule.")
-    else:
-        scheduler = Scheduler(st.session_state.owner)
 
-        # ── Conflict warnings ─────────────────────────────────────────────
-        # Surface conflicts BEFORE the schedule table so the owner can fix
-        # them without scrolling — each warning names the exact tasks and
-        # pets involved so the fix is obvious (change one task's time).
-        conflicts = scheduler.detect_conflicts()
-        if conflicts:
-            st.markdown("#### Scheduling Conflicts Detected")
-            for warning in conflicts:
-                st.warning(f"**Time conflict** — {warning.replace('WARNING: Scheduling conflict at ', '').replace(' — ', ': ')}\n\nTwo or more tasks are scheduled at the same time. Edit a task's time above to resolve this.")
+def _has_tasks():
+    return (
+        st.session_state.owner is not None
+        and st.session_state.owner.pets
+        and any(p.tasks for p in st.session_state.owner.pets)
+    )
+
+col_basic, col_ai = st.columns(2)
+
+with col_basic:
+    if st.button("Generate schedule", use_container_width=True):
+        if st.session_state.owner is None:
+            st.warning("Save an owner first.")
+        elif not _has_tasks():
+            st.warning("Add at least one task before generating a schedule.")
         else:
-            st.success("No scheduling conflicts found.")
+            scheduler = Scheduler(st.session_state.owner)
 
-        # ── Generate and display the schedule ────────────────────────────
-        schedule = scheduler.generate()
+            conflicts = scheduler.detect_conflicts()
+            if conflicts:
+                st.markdown("#### Scheduling Conflicts Detected")
+                for warning in conflicts:
+                    st.warning(f"**Time conflict** — {warning.replace('WARNING: Scheduling conflict at ', '').replace(' — ', ': ')}\n\nTwo or more tasks are scheduled at the same time. Edit a task's time above to resolve this.")
+            else:
+                st.success("No scheduling conflicts found.")
 
-        if not schedule.entries:
-            st.warning("No tasks could fit within your available time budget.")
+            schedule = scheduler.generate()
+
+            if not schedule.entries:
+                st.warning("No tasks could fit within your available time budget.")
+            else:
+                st.markdown(f"#### Plan for {st.session_state.owner.name} — {schedule.date}")
+                sorted_entries = scheduler.sort_by_time(schedule.entries)
+                st.table([
+                    {
+                        "Time": task.time,
+                        "Pet": pet.name,
+                        "Task": task.title,
+                        "Duration (min)": task.duration_minutes,
+                        "Priority": task.priority,
+                        "Required": "Yes" if task.is_required else "No",
+                    }
+                    for pet, task in sorted_entries
+                ])
+                total = schedule.total_time()
+                budget = st.session_state.owner.available_minutes
+                st.info(f"**Total:** {total} min used of {budget} min available ({budget - total} min remaining)\n\n{schedule.explanation}")
+
+with col_ai:
+    if st.button("✨ Generate with AI", use_container_width=True):
+        if st.session_state.owner is None:
+            st.warning("Save an owner first.")
+        elif not _has_tasks():
+            st.warning("Add at least one task before generating a schedule.")
+        elif not os.environ.get("GEMINI_API_KEY"):
+            st.error("Set the GEMINI_API_KEY environment variable to use AI scheduling.")
         else:
-            st.markdown(f"#### Plan for {st.session_state.owner.name} — {schedule.date}")
+            with st.spinner("AI is building your schedule..."):
+                try:
+                    explanation, entries, validation = run_scheduling_agent(st.session_state.owner)
+                except Exception as e:
+                    st.error(f"Agent error: {e}")
+                    entries = []
+                    explanation = ""
+                    validation = []
 
-            # Sort the scheduled entries chronologically before display
-            sorted_entries = scheduler.sort_by_time(schedule.entries)
-            st.table([
-                {
-                    "Time": task.time,
-                    "Pet": pet.name,
-                    "Task": task.title,
-                    "Duration (min)": task.duration_minutes,
-                    "Priority": task.priority,
-                    "Required": "Yes" if task.is_required else "No",
-                }
-                for pet, task in sorted_entries
-            ])
+            if entries:
+                from datetime import date
+                st.markdown(f"#### AI Plan for {st.session_state.owner.name} — {date.today()}")
+                st.table([
+                    {
+                        "Time": e["time"],
+                        "Pet": e["pet"],
+                        "Task": e["task"],
+                        "Duration (min)": e["duration_min"],
+                        "Priority": e["priority"],
+                        "Required": "Yes" if e["required"] else "No",
+                    }
+                    for e in entries
+                ])
+                total = sum(e["duration_min"] for e in entries)
+                budget = st.session_state.owner.available_minutes
+                st.info(f"**Total:** {total} min used of {budget} min available ({budget - total} min remaining)")
+                if explanation:
+                    st.markdown("#### AI Reasoning")
+                    st.write(explanation)
 
-            total = schedule.total_time()
-            budget = st.session_state.owner.available_minutes
-            st.info(f"**Total:** {total} min used of {budget} min available ({budget - total} min remaining)\n\n{schedule.explanation}")
+            if validation:
+                passed = sum(1 for c in validation if c["passed"])
+                st.markdown("#### Reliability Checks")
+                st.caption(f"{passed}/{len(validation)} checks passed")
+                for check in validation:
+                    icon = "✅" if check["passed"] else "❌"
+                    st.markdown(f"{icon} **{check['check']}** — {check['detail']}")
+
+            if not entries and explanation:
+                st.warning(explanation)

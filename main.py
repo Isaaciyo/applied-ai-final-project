@@ -4,18 +4,85 @@ from pawpal_system import Owner, Pet, Task, Scheduler
 owner = Owner(name="Jordan", available_minutes=120)
 
 mochi = Pet(name="Mochi", species="dog", age=3)
-luna  = Pet(name="Luna",  species="cat", age=5)
+luna = Pet(name="Luna", species="cat", age=5)
 
 # --- Mochi's tasks ---
-mochi.add_task(Task("Morning walk", duration_minutes=30, priority="high",   category="exercise",   frequency="daily",    time="07:00", is_required=True))
-mochi.add_task(Task("Breakfast",    duration_minutes=10, priority="high",   category="feeding",    frequency="daily",    time="08:00", is_required=True))  # conflict
-mochi.add_task(Task("Fetch in yard",duration_minutes=20, priority="medium", category="enrichment", frequency="daily",    time="15:00"))
+mochi.add_task(
+    Task(
+        "Morning walk",
+        duration_minutes=30,
+        priority="high",
+        category="exercise",
+        frequency="daily",
+        time="07:00",
+        is_required=True,
+    )
+)
+mochi.add_task(
+    Task(
+        "Breakfast",
+        duration_minutes=10,
+        priority="high",
+        category="feeding",
+        frequency="daily",
+        time="08:00",
+        is_required=True,
+    )
+)  # conflict
+mochi.add_task(
+    Task(
+        "Fetch in yard",
+        duration_minutes=20,
+        priority="medium",
+        category="enrichment",
+        frequency="daily",
+        time="15:00",
+    )
+)
 
 # --- Luna's tasks ---
-mochi.add_task(Task("Medication",   duration_minutes=5,  priority="high",   category="health",     frequency="as_needed",time="07:30", is_required=True))
-luna.add_task(Task("Feeding",       duration_minutes=10, priority="high",   category="feeding",    frequency="daily",    time="08:00", is_required=True))  # conflict — same slot as Mochi's Breakfast
-luna.add_task(Task("Brush coat",    duration_minutes=15, priority="low",    category="grooming",   frequency="weekly",   time="17:00"))
-luna.add_task(Task("Evening play",  duration_minutes=15, priority="medium", category="enrichment", frequency="daily",    time="17:00"))  # second conflict — same pet, same slot
+mochi.add_task(
+    Task(
+        "Medication",
+        duration_minutes=5,
+        priority="high",
+        category="health",
+        frequency="as_needed",
+        time="07:30",
+        is_required=True,
+    )
+)
+luna.add_task(
+    Task(
+        "Feeding",
+        duration_minutes=10,
+        priority="high",
+        category="feeding",
+        frequency="daily",
+        time="08:00",
+        is_required=True,
+    )
+)  # conflict — same slot as Mochi's Breakfast
+luna.add_task(
+    Task(
+        "Brush coat",
+        duration_minutes=15,
+        priority="low",
+        category="grooming",
+        frequency="weekly",
+        time="17:00",
+    )
+)
+luna.add_task(
+    Task(
+        "Evening play",
+        duration_minutes=15,
+        priority="medium",
+        category="enrichment",
+        frequency="daily",
+        time="17:00",
+    )
+)  # second conflict — same pet, same slot
 
 owner.add_pet(mochi)
 owner.add_pet(luna)
